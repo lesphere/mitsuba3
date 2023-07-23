@@ -28,3 +28,11 @@ __pycache__
 /docs/src/quickstart
 /docs/src/generated
 /docs/resources
+
+# Temporary images
+exp/*.exr
+exp/*.png
+
+exp/output.txt
+
+/out
