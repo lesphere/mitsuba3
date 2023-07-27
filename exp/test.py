@@ -10,7 +10,7 @@ def mse(image, image_ref):
 def main():
     mi.set_variant('cuda_ad_rgb')
 
-    scene = mi.load_file('scenes/cbox.xml', integrator='prb')
+    scene = mi.load_file('scenes/cbox.xml', integrator='prb_npm')
 
     image_ref = mi.render(scene, spp=512)
     mi.Bitmap(image_ref).write('ref.exr')
