@@ -199,20 +199,33 @@ class PRBNPMIntegrator(RBIntegrator):
             #                                            sampler.next_2d(), 
             #                                            active_next)
 
-            # need extra sample 1D between bsdf sampling and guided sampling
+            # DEBUG
             sample1 = sampler.next_1d()
             sample2 = sampler.next_2d()
-            bsdf_sample, bsdf_weight = bsdf.sample(bsdf_ctx, si,
-                                                   sample1,
-                                                   sample2,
+            bsdf_sample, bsdf_weight = bsdf.sample(bsdf_ctx, si, 
+                                                   sample1, 
+                                                   sample2, 
                                                    active_next)
             guided_sample, guided_weight = dist.sample(si, 
                                                        sample1, 
                                                        sample2, 
                                                        active_next)
+            sample = guided_sample
+            weight = guided_weight
 
-            # assert guided_sample.wo is local
-            bsdf_weight, bsdf_pdf = bsdf.eval_pdf(bsdf_ctx, si, guided_sample.wo, active_next)
+            # # RELEASE
+            # bsdf_sample, bsdf_weight = bsdf.sample(bsdf_ctx, si, 
+            #                                        sampler.next_1d(), 
+            #                                        sampler.next_2d(), 
+            #                                        active_next)
+            # # assert guided_sample.wo is local
+            # guided_sample, guided_weight = dist.sample(si, 
+            #                                            sampler.next_1d(), 
+            #                                            sampler.next_2d(), 
+            #                                            active_next)
+            # bsdf_sampling = sampler.next_1d() < bsdf_sample_frac
+            # sample = dr.select(bsdf_sampling, bsdf_sample, guided_sample)
+            # weight = dr.select(bsdf_sampling, bsdf_weight, guided_weight)
 
             # ---- Update loop variables based on current interaction -----
 
@@ -220,18 +233,16 @@ class PRBNPMIntegrator(RBIntegrator):
             # ray = si.spawn_ray(si.to_world(bsdf_sample.wo))
             # η *= bsdf_sample.eta
             # β *= bsdf_weight
-            ray = si.spawn_ray(si.to_world(guided_sample.wo))
-            η *= guided_sample.eta
-            β *= guided_weight
+            ray = si.spawn_ray(si.to_world(sample.wo))
+            η *= sample.eta
+            β *= weight
 
             # Information about the current vertex needed by the next iteration
 
             prev_si = dr.detach(si, True)
-            # prev_bsdf_pdf = bsdf_sample.pdf
-            # prev_bsdf_delta = mi.has_flag(bsdf_sample.sampled_type, mi.BSDFFlags.Delta)
-            prev_bsdf_pdf = bsdf_pdf
-            prev_scatter_pdf = (1 - bsdf_sample_frac) * guided_sample.pdf + bsdf_sample_frac * prev_bsdf_pdf
+            prev_bsdf_pdf = bsdf_sample.pdf
             prev_bsdf_delta = mi.has_flag(bsdf_sample.sampled_type, mi.BSDFFlags.Delta)
+            prev_scatter_pdf = (1 - bsdf_sample_frac) * guided_sample.pdf + bsdf_sample_frac * prev_bsdf_pdf
             prev_scatter_delta = prev_bsdf_delta
 
             # -------------------- Stopping criterion ---------------------
@@ -270,8 +281,7 @@ class PRBNPMIntegrator(RBIntegrator):
                     bsdf_val = bsdf.eval(bsdf_ctx, si, wo, active_next)
 
                     # Detached version of the above term and inverse
-                    # bsdf_val_det = bsdf_weight * bsdf_sample.pdf
-                    bsdf_val_det = bsdf_weight * bsdf_pdf
+                    bsdf_val_det = bsdf_weight * bsdf_sample.pdf
                     inv_bsdf_val_det = dr.select(dr.neq(bsdf_val_det, 0),
                                                  dr.rcp(bsdf_val_det), 0)
 
