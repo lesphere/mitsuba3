@@ -146,8 +146,6 @@ class PRBNPMIntegrator(RBIntegrator):
             #     scene.pdf_emitter_direction(prev_si, ds, ~prev_bsdf_delta)
             # )
 
-            # Guided distribution(VMM, vMF mixture model) does not contain a Dirac delta term,
-            # so prev_guided_delta is always False
             mis = mis_weight(
                 prev_scatter_pdf,
                 scene.pdf_emitter_direction(prev_si, ds, ~prev_scatter_delta)
