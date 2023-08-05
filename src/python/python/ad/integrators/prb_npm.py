@@ -112,7 +112,7 @@ class PRBNPMIntegrator(RBIntegrator):
         # loop = mi.Loop(name="Path Replay Backpropagation (%s)" % mode.name,
         #                state=lambda: (sampler, ray, depth, L, δL, β, η, active,
         #                               prev_si, prev_bsdf_pdf, prev_bsdf_delta))
-        loop = mi.Loop(name="Path Replay Backpropagation (%s)" % mode.name,
+        loop = mi.Loop(name="Path Replay Backpropagation with NPM(%s)" % mode.name,
                        state=lambda: (sampler, ray, depth, L, δL, β, η, active, 
                                       prev_si, prev_bsdf_pdf, prev_scatter_pdf, 
                                       prev_scatter_delta))
