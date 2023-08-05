@@ -3,9 +3,9 @@ from __future__ import annotations # Delayed parsing of type annotations
 import drjit as dr
 import mitsuba as mi
 
-from .common import RBIntegrator, mis_weight
+from .common import RBNPMIntegrator, mis_weight
 
-class PRBNPMIntegrator(RBIntegrator):
+class PRBNPMIntegrator(RBNPMIntegrator):
     r"""
     .. _integrator-prb:
 
