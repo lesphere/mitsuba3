@@ -64,6 +64,7 @@ class PRBNPMIntegrator(RBNPMIntegrator):
                δL: Optional[mi.Spectrum],
                state_in: Optional[mi.Spectrum],
                active: mi.Bool,
+            #    for_train: mi.Bool,
                **kwargs # Absorbs unused arguments
     ) -> Tuple[mi.Spectrum,
                mi.Bool, mi.Spectrum]:
@@ -107,6 +108,11 @@ class PRBNPMIntegrator(RBNPMIntegrator):
             
             def eval_pdf(self, si, wo, active):
                 return self.bsdf.eval_pdf(bsdf_ctx, si, wo, active)[1]
+
+        # Use an array to store temporary gradient in the loop (trade space for time)
+        # if not primal:
+        #     # grad = array(max_depth * dim_params)
+        #     grad = mi.TensorXf(0, (self.max_depth, 3))
 
         # Record the following loop in its entirety
         # loop = mi.Loop(name="Path Replay Backpropagation (%s)" % mode.name,
@@ -305,6 +311,7 @@ class PRBNPMIntegrator(RBNPMIntegrator):
                     # Propagate derivatives from/to 'Lo' based on 'mode'
                     if mode == dr.ADMode.Backward:
                         dr.backward_from(δL * Lo)
+
                     else:
                         δL += dr.forward_to(Lo)
 
