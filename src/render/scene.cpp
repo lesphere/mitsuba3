@@ -332,6 +332,30 @@ MI_VARIANT Spectrum Scene<Float, Spectrum>::eval_emitter_direction(
 }
 
 MI_VARIANT void Scene<Float, Spectrum>::traverse(TraversalCallback *callback) {
+//#define DEBUG_PRINT
+#if defined(DEBUG_PRINT)
+    fprintf(stderr, "In scene.cpp Scene::traverse():\n");
+    for (auto &child : m_children) {
+        std::string id = child->id();
+        fprintf(stderr, "id = %s, ", id.c_str());
+        if (id.empty() || string::starts_with(id, "_unnamed_"))
+            id = child->class_()->name();
+        fprintf(stderr, "id = %s, child->class_() = %llu = %s\n", id.c_str(),
+                (unsigned long long) child->class_(),
+                typeid(child->class_).name());
+        if (id.compare("white") == 0)
+            fprintf(
+                stderr,
+                "type of child.get() = %s\n"
+                "jit_registry_get_domain(JitBackend::CUDA, child.get()) = %s\n"
+                "jit_registry_get_id(JitBackend::CUDA, child.get()) = %u\n",
+                typeid(child.get()).name(),
+                jit_registry_get_domain(JitBackend::CUDA, child.get()),
+                jit_registry_get_id(JitBackend::CUDA, child.get()));
+    }
+#endif
+#undef DEBUG_PRINT
+
     for (auto& child : m_children) {
         std::string id = child->id();
         if (id.empty() || string::starts_with(id, "_unnamed_"))

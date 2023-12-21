@@ -108,12 +108,14 @@ template <typename Ptr, typename Cls> void bind_bsdf_generic(Cls &cls) {
             "active"_a = true, D(BSDF, sample))
         .def("eval",
              [](Ptr bsdf, const BSDFContext &ctx, const SurfaceInteraction3f &si,
-                const Vector3f &wo,
-                Mask active) { return bsdf->eval(ctx, si, wo, active);
+                const Vector3f &wo, Mask active) {
+                fprintf(stderr, "In bsdf_v.cpp bind_bsdf_generic(): Ptr = %s\n",
+                        typeid(Ptr).name());
+                return bsdf->eval(ctx, si, wo, active); 
              }, "ctx"_a, "si"_a, "wo"_a, "active"_a = true, D(BSDF, eval))
         .def("pdf",
              [](Ptr bsdf, const BSDFContext &ctx, const SurfaceInteraction3f &si,
-                const Vector3f &wo,
+                const Vector3f &wo, 
                 Mask active) { return bsdf->pdf(ctx, si, wo, active);
              }, "ctx"_a, "si"_a, "wo"_a, "active"_a = true, D(BSDF, pdf))
         .def("eval_pdf",
@@ -198,6 +200,13 @@ MI_PY_EXPORT(BSDF) {
         bind_bsdf_generic<BSDFPtr>(cls);
         pybind11_type_alias<UInt32, dr::replace_scalar_t<UInt32, BSDFFlags>>();
     }
+//#define DEBUG_PRINT
+#if defined(DEBUG_PRINT)
+    fprintf(stderr, "In bsdf_v.cpp;\n");
+    fprintf(stderr, "BSDF * = %s\n", typeid(BSDF *).name());
+    fprintf(stderr, "BSDFPtr = %s\n", typeid(BSDFPtr).name());
+#endif
+#undef DEBUG_PRINT
 
     MI_PY_REGISTER_OBJECT("register_bsdf", BSDF)
 }

@@ -35,7 +35,7 @@ class Optimizer:
     def __getitem__(self, key: str):
         return self.variables[key]
 
-    def __setitem__(self, key: str, value):
+    def __setitem__(self, key: str, value, idx: int=None):
         """
         Overwrite the value of a parameter.
 
@@ -52,9 +52,15 @@ class Optimizer:
         needs_reset = (key not in self.variables) or dr.shape(self.variables[key]) != dr.shape(value)
 
         self.variables[key] = dr.detach(value, True)
-        dr.enable_grad(self.variables[key])
+        if idx == None:
+            dr.enable_grad(self.variables[key])
+        else:
+            dr.enable_grad(self.variables[key][idx])
         if needs_reset:
             self.reset(key)
+
+    def set(self, key: str, idx: int, value):
+        self.__setitem__(key, value, idx)
 
     def __delitem__(self, key: str) -> None:
         del self.variables[key]
@@ -64,6 +70,9 @@ class Optimizer:
 
     def keys(self):
         return self.variables.keys()
+    
+    def values(self):
+        return self.variables.values()
 
     def items(self):
         class OptimizerItemIterator:

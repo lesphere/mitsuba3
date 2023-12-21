@@ -62,6 +62,22 @@ MI_PY_EXPORT(Object) {
         },
         "ptr"_a, "type"_a, "value"_a);
 
+    m.def("get_cuda_domain_id", [](const void *ptr) {
+#define DEBUG_PRINT
+#if defined(DEBUG_PRINT)
+        fprintf(stderr,
+                "In object_v.cpp: type of ptr = %s\n"
+                "jit_registry_get_domain(JitBackend::CUDA, ptr) = %s\n"
+                "jit_registry_get_id(JitBackend::CUDA, ptr) = %u\n",
+                typeid(ptr).name(),
+                jit_registry_get_domain(JitBackend::CUDA, ptr),
+                jit_registry_get_id(JitBackend::CUDA, ptr));
+#endif
+#undef DEBUG_PRINT
+        return py::make_tuple(jit_registry_get_domain(JitBackend::CUDA, ptr),
+                              jit_registry_get_id(JitBackend::CUDA, ptr));
+    });
+
     if constexpr (dr::is_array_v<ObjectPtr>) {
         py::object dr       = py::module_::import("drjit"),
                    dr_array = dr.attr("ArrayBase");

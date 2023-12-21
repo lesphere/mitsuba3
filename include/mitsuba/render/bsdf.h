@@ -659,9 +659,46 @@ NAMESPACE_END(mitsuba)
 //! @{ \name Dr.Jit support for vectorized function calls
 // -----------------------------------------------------------------------
 
+template <int N, typename... Ts>
+using NthTypeOf = typename std::tuple_element<N, std::tuple<Ts...>>::type;
+
 DRJIT_VCALL_TEMPLATE_BEGIN(mitsuba::BSDF)
     DRJIT_VCALL_METHOD(sample)
-    DRJIT_VCALL_METHOD(eval)
+    //DRJIT_VCALL_METHOD(eval)
+    template <typename... Args> auto eval(const Args &...args_) const {
+
+#define DEBUG_PRINT
+#if defined(DEBUG_PRINT)
+    using Self = Array;
+    using UInt32 = uint32_array_t<Self>;
+    using Mask = mask_t<UInt32>;
+    fprintf(stderr, "In call_support<mitsuba::BSDF<Ts...>, Array>:\n");
+    fprintf(stderr, "Array = %s\n", typeid(Array).name());
+    fprintf(stderr, "UInt32 = %s\n", typeid(UInt32).name());
+    fprintf(stderr, "Mask = %s\n", typeid(Mask).name());
+    fprintf(stderr, "Ts = ");
+    (fprintf(stderr, "%s, \n", typeid(Ts).name()), ...);
+    fprintf(stderr, "array.size() = %zu\n", array.size());
+    
+    printf_async(Mask(true), "array = %u\n", array);
+#endif
+#undef DEBUG_PRINT
+
+        return detail::vcall<Class>(
+            "eval",
+            [](auto self, const auto &...args) {
+                using Result = decltype(self->eval(args...));
+                if constexpr (std::is_same_v<Result, void>) {
+                    self->eval(args...);
+                    return nullptr;
+                } else {
+                    auto result = self->eval(args...);
+                    detail::ad_copy(result);
+                    return result;
+                }
+            },
+            array, args_...);
+    }
     DRJIT_VCALL_METHOD(eval_null_transmission)
     DRJIT_VCALL_METHOD(pdf)
     DRJIT_VCALL_METHOD(eval_pdf)

@@ -44,10 +44,32 @@ class SceneParameters(Mapping):
     def __get_value(self, key: str):
         value, value_type, node, _ = self.properties[key]
 
+        print('In util.py SceneParameters::__get_value():')
+        print(f'type(value) = {type(value)}, value = {value}')
+        print(f'type(value_type) = {type(value_type)}, value_type = {value_type}')
+        print(f'type(node) = {type(node)}, node = {node}')
+        print(f'type(_) = {type(_)}, _ = {_}')
+
         if value_type is not None:
             value = self.get_property(value, value_type, node)
 
+        print(f'type(value) = {type(value)}, value = {value}')
+
         return value
+
+    def print_hierarchy(self):
+        for k, v in self.hierarchy.items():
+            print(f'{k} -> {v}')
+    
+    def __get_hierarchy(self, key: str):
+        value, value_type, node, _ = self.properties[key]
+        return self.hierarchy[node]
+
+    def get_hierarchy_item_str(self, key: str):
+        return self.__get_hierarchy(key)
+    
+    def get_hierarchy_item_object(self, key: mi.Object):
+        return self.hierarchy[key]
 
     def __getitem__(self, key: str):
         value = self.__get_value(key)
@@ -394,15 +416,28 @@ class _RenderOp(dr.CustomOp):
             self.integrator.render_forward(self.scene, self.params, self.sensor,
                                            self.seed[1], self.spp[1]))
 
-    def backward(self):
+    def backward(self, opt=None, guiding_t=None):
         mi.set_variant(self.variant)
         if not isinstance(self.params, mi.SceneParameters):
             raise Exception('An instance of mi.SceneParameter containing the '
                             'scene parameter to be differentiated should be '
                             'provided to mi.render() if backward derivatives are '
                             'desired!')
-        self.integrator.render_backward(self.scene, self.params, self.grad_out(),
-                                        self.sensor, self.seed[1], self.spp[1])
+        
+        assert not((opt is None) ^ (guiding_t is None))
+
+        if hasattr(self.integrator, 'is_npm'):
+            self.integrator.render_backward(self.scene, self.params, self.grad_out(),
+                                            self.sensor, self.seed[1], self.spp[1],
+                                            opt, guiding_t)
+        else:
+            self.integrator.render_backward(self.scene, self.params, self.grad_out(),
+                                            self.sensor, self.seed[1], self.spp[1])
+            
+        # if opt != None:
+        #     keys = opt.keys()
+        #     for i, key in enumerate(keys):
+        #         print(f'after integrator.render_backward: grad[{key}] = {dr.grad(opt[key])}', flush=True)
 
     def name(self):
         return "RenderOp"

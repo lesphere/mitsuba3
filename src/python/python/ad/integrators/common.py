@@ -1180,7 +1180,8 @@ class RBNPMIntegrator(ADIntegrator):
                         grad_in: mi.TensorXf,
                         sensor: Union[int, mi.Sensor] = 0,
                         seed: int = 0,
-                        spp: int = 0) -> None:
+                        spp: int = 0,
+                        opt: mi.ad.Optimizer = None) -> None:
         """
         Evaluates the reverse-mode derivative of the rendering step.
 
@@ -1327,18 +1328,49 @@ class RBNPMIntegrator(ADIntegrator):
                 active=mi.Bool(True)
             )
 
+            # with dr.resume_grad():
+            #     print(f'after primal pass:')
+            #     for key in opt.keys():
+            #         print(key, id(opt), id(opt[key]), id(dr.grad(opt[key])), dr.grad(opt[key]))
+
             # Launch Monte Carlo sampling in backward AD mode (2)
             L_2, valid_2, state_out_2 = self.sample(
                 mode=dr.ADMode.Backward,
                 scene=scene,
-                sampler=sampler,
+                sampler=sampler.clone(),
                 ray=ray,
                 depth=mi.UInt32(0),
                 δL=δL,
                 state_in=state_out,
                 reparam=reparam,
-                active=mi.Bool(True)
+                active=mi.Bool(True),
+                for_train=True,
+                opt=opt
             )
+
+            # with dr.resume_grad():
+            #     print(f'after adjoint pass:')
+            #     for key in opt.keys():
+            #         print(key, id(opt), id(opt[key]), id(dr.grad(opt[key])), dr.grad(opt[key]))
+
+            # # Replay Monte Carlo sampling in backward AD mode to get training data (3)
+            # L_3, valid_3, state_out_3 = self.sample(
+            #     mode=dr.ADMode.Backward,
+            #     scene=scene,
+            #     sampler=sampler,
+            #     ray=ray,
+            #     depth=mi.UInt32(0),
+            #     δL=δL,
+            #     state_in=state_out,
+            #     reparam=reparam,
+            #     active=mi.Bool(True),
+            #     for_train=True
+            # )
+
+            # with dr.resume_grad():
+            #     print(f'after data generation pass:')
+            #     for key in opt.keys():
+            #         print(key, id(opt), id(opt[key]), id(dr.grad(opt[key])), dr.grad(opt[key]))
 
             # Propagate gradient image to sample positions if necessary
             if reparam is not None:
@@ -1356,7 +1388,8 @@ class RBNPMIntegrator(ADIntegrator):
 
             # We don't need any of the outputs here
             del L_2, valid_2, state_out, state_out_2, δL, \
-                ray, weight, pos, sampler
+                ray, weight, pos, sampler, \
+                # L_3, valid_3, state_out_3
 
             gc.collect()
 

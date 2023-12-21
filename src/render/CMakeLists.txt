@@ -102,6 +102,10 @@ if (MI_ENABLE_JIT)
   target_link_libraries(mitsuba-render PUBLIC drjit-core)
 endif()
 
+if (MI_ENABLE_AUTODIFF)
+  target_link_libraries(mitsuba-render PUBLIC drjit-autodiff)
+endif()
+
 # Python bindings
 if (MI_ENABLE_PYTHON)
   add_subdirectory(python)

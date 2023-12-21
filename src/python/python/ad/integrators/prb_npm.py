@@ -64,7 +64,8 @@ class PRBNPMIntegrator(RBNPMIntegrator):
                δL: Optional[mi.Spectrum],
                state_in: Optional[mi.Spectrum],
                active: mi.Bool,
-            #    for_train: mi.Bool,
+               for_train: bool = False,
+               opt: mi.ad.Optimizer = None,
                **kwargs # Absorbs unused arguments
     ) -> Tuple[mi.Spectrum,
                mi.Bool, mi.Spectrum]:
@@ -110,9 +111,23 @@ class PRBNPMIntegrator(RBNPMIntegrator):
                 return self.bsdf.eval_pdf(bsdf_ctx, si, wo, active)[1]
 
         # Use an array to store temporary gradient in the loop (trade space for time)
-        # if not primal:
-        #     # grad = array(max_depth * dim_params)
-        #     grad = mi.TensorXf(0, (self.max_depth, 3))
+        if not primal and for_train:
+            keys = list(opt.keys())
+            
+            # grad = []
+            # for key in keys:
+            #     grad.append(mi.TensorXf(0, [self.max_depth] + dr.shape(opt[key])[:-1]))
+            # x = mi.TensorXf(0, (self.max_depth, 3))
+            # w_in = mi.TensorXf(0, (self.max_depth, 3))
+            # w_out = mi.TensorXf(0, (self.max_depth, 3))
+
+            # loop = mi.Loop(name="Path Replay Backpropagation with NPM(%s)" % mode.name,
+            #                state=lambda: (sampler, ray, depth, L, δL, β, η, active, 
+            #                               prev_si, prev_bsdf_pdf, prev_scatter_pdf, 
+            #                               prev_scatter_delta, w_in))
+
+            # w_in = mi.Vector3f(0)
+            # w_out = mi.Vector3f(0)
 
         # Record the following loop in its entirety
         # loop = mi.Loop(name="Path Replay Backpropagation (%s)" % mode.name,
@@ -128,6 +143,7 @@ class PRBNPMIntegrator(RBNPMIntegrator):
         loop.set_max_iterations(self.max_depth)
 
         while loop(active):
+        # while active:
             # Compute a surface interaction that tracks derivatives arising
             # from differentiable shape parameters (position, normals, etc.)
             # In primal mode, this is just an ordinary ray tracing operation.
@@ -186,7 +202,7 @@ class PRBNPMIntegrator(RBNPMIntegrator):
                 wo = si.to_local(ds.d)
                 bsdf_value_em, bsdf_pdf_em = bsdf.eval_pdf(bsdf_ctx, si, wo, active_em)
                 guided_pdf_em = dist.eval_pdf(si, wo, active_em)
-                mis_em = dr.select(ds.delta, 1, mis_weight(ds.pdf, guided_pdf_em))
+                mis_em = dr.select(ds.delta, 1, mis_weight(ds.pdf, guided_pdf_em)) # guided pdf or scatter pdf?
                 Lr_dir = β * mis_em * bsdf_value_em * em_weight
 
             # # ------------------ Detached BSDF sampling -------------------
@@ -203,33 +219,33 @@ class PRBNPMIntegrator(RBNPMIntegrator):
             #                                            sampler.next_2d(), 
             #                                            active_next)
 
-            # DEBUG
-            sample1 = sampler.next_1d()
-            sample2 = sampler.next_2d()
-            bsdf_sample, bsdf_weight = bsdf.sample(bsdf_ctx, si, 
-                                                   sample1, 
-                                                   sample2, 
-                                                   active_next)
-            guided_sample, guided_weight = dist.sample(si, 
-                                                       sample1, 
-                                                       sample2, 
-                                                       active_next)
-            sample = guided_sample
-            weight = guided_weight
-
-            # # RELEASE
+            # # DEBUG
+            # sample1 = sampler.next_1d()
+            # sample2 = sampler.next_2d()
             # bsdf_sample, bsdf_weight = bsdf.sample(bsdf_ctx, si, 
-            #                                        sampler.next_1d(), 
-            #                                        sampler.next_2d(), 
+            #                                        sample1, 
+            #                                        sample2, 
             #                                        active_next)
-            # # assert guided_sample.wo is local
             # guided_sample, guided_weight = dist.sample(si, 
-            #                                            sampler.next_1d(), 
-            #                                            sampler.next_2d(), 
+            #                                            sample1, 
+            #                                            sample2, 
             #                                            active_next)
-            # bsdf_sampling = sampler.next_1d() < bsdf_sample_frac
-            # sample = dr.select(bsdf_sampling, bsdf_sample, guided_sample)
-            # weight = dr.select(bsdf_sampling, bsdf_weight, guided_weight)
+            # sample = guided_sample
+            # weight = guided_weight
+
+            # RELEASE
+            bsdf_sample, bsdf_weight = bsdf.sample(bsdf_ctx, si, 
+                                                   sampler.next_1d(), 
+                                                   sampler.next_2d(), 
+                                                   active_next)
+            # assert guided_sample.wo is local
+            guided_sample, guided_weight = dist.sample(si, 
+                                                       sampler.next_1d(), 
+                                                       sampler.next_2d(), 
+                                                       active_next)
+            bsdf_sampling = sampler.next_1d() < bsdf_sample_frac
+            sample = dr.select(bsdf_sampling, bsdf_sample, guided_sample)
+            weight = dr.select(bsdf_sampling, bsdf_weight, guided_weight)
 
             # ---- Update loop variables based on current interaction -----
 
@@ -281,6 +297,7 @@ class PRBNPMIntegrator(RBNPMIntegrator):
                     # Recompute 'wo' to propagate derivatives to cosine term
                     wo = si.to_local(ray.d)
 
+                    # ------------------bsdf pdf or scatter pdf?------------------
                     # Re-evaluate BSDF * cos(theta) differentiably
                     bsdf_val = bsdf.eval(bsdf_ctx, si, wo, active_next)
 
@@ -293,6 +310,7 @@ class PRBNPMIntegrator(RBNPMIntegrator):
                     # radiance. Minor optional tweak: indicate that the primal
                     # value of the second term is always 1.
                     Lr_ind = L * dr.replace_grad(1, inv_bsdf_val_det * bsdf_val)
+                    # ------------------bsdf pdf or scatter pdf?------------------
 
                     # Differentiable Monte Carlo estimate of all contributions
                     Lo = Le + Lr_dir + Lr_ind
@@ -310,13 +328,46 @@ class PRBNPMIntegrator(RBNPMIntegrator):
 
                     # Propagate derivatives from/to 'Lo' based on 'mode'
                     if mode == dr.ADMode.Backward:
+                        # if for_train:
+                        #     dr.backward_from(-δL * Lo)
+                        # else:
+                        #     dr.backward_from(δL * Lo)
+
                         dr.backward_from(δL * Lo)
 
+                        with dr.suspend_grad():
+                            # for i, key in enumerate(keys):
+                            #     grad[i][depth] = dr.grad(opt[key])
+                            # x[depth] = 
+                            
+                            # depth_mask = 
+                            # w_in = dr.select(depth_mask, si.to_local(si.wi), w_in)
+
+                            wi = si.to_local(si.wi)
+                            # w_in[depth][0] = wi.x
+                            # w_in[depth][1] = wi.y
+                            # w_in[depth][2] = wi.z
+                            # w_out[depth] = ray.d
+
+                            # w_in = si.to_local(si.wi)
+                            # w_out = ray.d
+
+                        # dr.forward_to(Lo)
+                        # print(dr.shape(grad[0][0]), dr.shape(Lo))
+                        # grad[0][0] = dr.grad(Lo)
+
+                        # dr.set_grad(Lo, δL)
+                        # dr.backward_to(list(opt.values()))
+                        # if not primal:
+                        #     for i, key in enumerate(keys):
+                        #         grad[i][depth] = dr.grad(opt[key])
                     else:
                         δL += dr.forward_to(Lo)
 
             depth[si.is_valid()] += 1
             active = active_next
+        
+        # print('loop end')
 
         return (
             L if primal else δL, # Radiance/differential radiance

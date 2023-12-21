@@ -29,10 +29,14 @@ __pycache__
 /docs/src/generated
 /docs/resources
 
-# Temporary images
-exp/*.exr
-exp/*.png
+# Split exp from mitsuba3
+exp
 
-exp/output.txt
-
+# Build files
 /out
+CMakeFiles
+mitsuba.conf
+
+# Debug files
+cmake_debug_output.txt
+cmake_trace_expand.txt
