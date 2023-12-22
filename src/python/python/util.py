@@ -44,16 +44,16 @@ class SceneParameters(Mapping):
     def __get_value(self, key: str):
         value, value_type, node, _ = self.properties[key]
 
-        print('In util.py SceneParameters::__get_value():')
-        print(f'type(value) = {type(value)}, value = {value}')
-        print(f'type(value_type) = {type(value_type)}, value_type = {value_type}')
-        print(f'type(node) = {type(node)}, node = {node}')
-        print(f'type(_) = {type(_)}, _ = {_}')
+        # print('In util.py SceneParameters::__get_value():')
+        # print(f'type(value) = {type(value)}, value = {value}')
+        # print(f'type(value_type) = {type(value_type)}, value_type = {value_type}')
+        # print(f'type(node) = {type(node)}, node = {node}')
+        # print(f'type(_) = {type(_)}, _ = {_}')
 
         if value_type is not None:
             value = self.get_property(value, value_type, node)
 
-        print(f'type(value) = {type(value)}, value = {value}')
+        # print(f'type(value) = {type(value)}, value = {value}')
 
         return value
 

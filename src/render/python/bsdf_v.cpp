@@ -3,6 +3,8 @@
 #include <mitsuba/core/properties.h>
 #include <mitsuba/python/python.h>
 
+#include <drjit/array_traits.h>
+
 MI_PY_EXPORT(BSDFSample) {
     MI_PY_IMPORT_TYPES()
 
@@ -109,8 +111,6 @@ template <typename Ptr, typename Cls> void bind_bsdf_generic(Cls &cls) {
         .def("eval",
              [](Ptr bsdf, const BSDFContext &ctx, const SurfaceInteraction3f &si,
                 const Vector3f &wo, Mask active) {
-                fprintf(stderr, "In bsdf_v.cpp bind_bsdf_generic(): Ptr = %s\n",
-                        typeid(Ptr).name());
                 return bsdf->eval(ctx, si, wo, active); 
              }, "ctx"_a, "si"_a, "wo"_a, "active"_a = true, D(BSDF, eval))
         .def("pdf",
@@ -166,8 +166,17 @@ template <typename Ptr, typename Cls> void bind_bsdf_generic(Cls &cls) {
              [](Ptr bsdf) { return bsdf->needs_differentials(); },
              D(BSDF, needs_differentials));
 
-    if constexpr (dr::is_array_v<Ptr>)
+    if constexpr (dr::is_array_v<Ptr>) {
         bind_drjit_ptr_array(cls);
+        cls.def(
+            "eval_perm",
+            [](Ptr bsdf, const BSDFContext &ctx, const SurfaceInteraction3f &si,
+               const Vector3f &wo, int id, drjit::uint32_array_t<Ptr> &perm,
+               Mask active) {
+                return bsdf->eval_perm(id, perm, ctx, si, wo, active);
+            },
+            "ctx"_a, "si"_a, "wo"_a, "id"_a, "perm"_a, "active"_a = true);
+    }
 }
 
 MI_PY_EXPORT(BSDF) {

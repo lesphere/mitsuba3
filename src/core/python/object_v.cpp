@@ -63,7 +63,7 @@ MI_PY_EXPORT(Object) {
         "ptr"_a, "type"_a, "value"_a);
 
     m.def("get_cuda_domain_id", [](const void *ptr) {
-#define DEBUG_PRINT
+//#define DEBUG_PRINT
 #if defined(DEBUG_PRINT)
         fprintf(stderr,
                 "In object_v.cpp: type of ptr = %s\n"
