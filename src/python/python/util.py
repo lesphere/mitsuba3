@@ -416,7 +416,7 @@ class _RenderOp(dr.CustomOp):
             self.integrator.render_forward(self.scene, self.params, self.sensor,
                                            self.seed[1], self.spp[1]))
 
-    def backward(self, opt=None, guiding_t=None):
+    def backward(self, opt=None, guiding_t=None, id=0):
         mi.set_variant(self.variant)
         if not isinstance(self.params, mi.SceneParameters):
             raise Exception('An instance of mi.SceneParameter containing the '
@@ -429,7 +429,7 @@ class _RenderOp(dr.CustomOp):
         if hasattr(self.integrator, 'is_npm'):
             self.integrator.render_backward(self.scene, self.params, self.grad_out(),
                                             self.sensor, self.seed[1], self.spp[1],
-                                            opt, guiding_t)
+                                            opt, guiding_t, id)
         else:
             self.integrator.render_backward(self.scene, self.params, self.grad_out(),
                                             self.sensor, self.seed[1], self.spp[1])
