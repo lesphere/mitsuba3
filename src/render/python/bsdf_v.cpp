@@ -173,7 +173,9 @@ template <typename Ptr, typename Cls> void bind_bsdf_generic(Cls &cls) {
             [](Ptr bsdf, const BSDFContext &ctx, const SurfaceInteraction3f &si,
                const Vector3f &wo, int id, drjit::uint32_array_t<Ptr> &perm,
                Mask active) {
-                return bsdf->eval_perm(id, perm, ctx, si, wo, active);
+                int size_valid = 0;
+                auto bsdf_val = bsdf->eval_perm(id, perm, size_valid, ctx, si, wo, active);
+                return std::make_tuple(bsdf_val, size_valid);
             },
             "ctx"_a, "si"_a, "wo"_a, "id"_a, "perm"_a, "active"_a = true);
     }

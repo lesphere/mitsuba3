@@ -665,45 +665,44 @@ using NthTypeOf = typename std::tuple_element<N, std::tuple<Ts...>>::type;
 DRJIT_VCALL_TEMPLATE_BEGIN(mitsuba::BSDF)
     DRJIT_VCALL_METHOD(sample)
 
-    //DRJIT_VCALL_METHOD(eval)
-
-    template <typename... Args> auto eval(const Args &...args_) const {
-//#define DEBUG_PRINT
-#if defined(DEBUG_PRINT)
-    using Self = Array;
-    using UInt32 = uint32_array_t<Self>;
-    using Mask = mask_t<UInt32>;
-    fprintf(stderr, "In call_support<mitsuba::BSDF<Ts...>, Array>:\n");
-    fprintf(stderr, "Array = %s\n", typeid(Array).name());
-    fprintf(stderr, "UInt32 = %s\n", typeid(UInt32).name());
-    fprintf(stderr, "Mask = %s\n", typeid(Mask).name());
-    fprintf(stderr, "Ts = ");
-    (fprintf(stderr, "%s, \n", typeid(Ts).name()), ...);
-    fprintf(stderr, "array.size() = %zu\n", array.size());
-    printf_async(Mask(true), "array = %u\n", array);
-#endif
-#undef DEBUG_PRINT
-
-        return detail::vcall<Class>(
-            "eval",
-            [](auto self, const auto &...args) {
-                using Result = decltype(self->eval(args...));
-                if constexpr (std::is_same_v<Result, void>) {
-                    self->eval(args...);
-                    return nullptr;
-                } else {
-                    auto result = self->eval(args...);
-                    detail::ad_copy(result);
-                    return result;
-                }
-            },
-            array, args_...);
-    }
-
+    DRJIT_VCALL_METHOD(eval)
     using UInt32 = uint32_array_t<Array>;
+//    template <typename... Args> auto eval(const Args &...args_) const {
+////#define DEBUG_PRINT
+//#if defined(DEBUG_PRINT)
+//    using Mask = mask_t<UInt32>;
+//    fprintf(stderr, "In call_support<mitsuba::BSDF<Ts...>, Array>:\n");
+//    fprintf(stderr, "Array = %s\n", typeid(Array).name());
+//    fprintf(stderr, "UInt32 = %s\n", typeid(UInt32).name());
+//    fprintf(stderr, "Mask = %s\n", typeid(Mask).name());
+//    fprintf(stderr, "Ts = ");
+//    (fprintf(stderr, "%s, \n", typeid(Ts).name()), ...);
+//    fprintf(stderr, "array.size() = %zu\n", array.size());
+//    printf_async(Mask(true), "array = %u\n", array);
+//#endif
+//#undef DEBUG_PRINT
+//
+//        return detail::vcall<Class>(
+//            "eval",
+//            [](auto self, const auto &...args) {
+//                using Result = decltype(self->eval(args...));
+//                if constexpr (std::is_same_v<Result, void>) {
+//                    self->eval(args...);
+//                    return nullptr;
+//                } else {
+//                    auto result = self->eval(args...);
+//                    detail::ad_copy(result);
+//                    return result;
+//                }
+//            },
+//            array, args_...);
+//    }
+
     // TODO: support multiple instance ids, only support single id now
-    template <typename... Args> auto eval_perm(int id, UInt32 &perm, const Args &...args_) const {
-//#define DEBUG_PRINT
+    template <typename... Args>
+    auto eval_perm(int id, UInt32 &perm, int &size_valid,
+                   const Args &...args_) const {
+    //#define DEBUG_PRINT
 #if defined(DEBUG_PRINT)
         using Self   = Array;
         using Mask   = mask_t<UInt32>;
@@ -725,7 +724,7 @@ DRJIT_VCALL_TEMPLATE_BEGIN(mitsuba::BSDF)
                 detail::ad_copy(result);
                 return result;
             },
-            array, id, perm, args_...);
+            array, id, perm, size_valid, args_...);
     }
 
     DRJIT_VCALL_METHOD(eval_null_transmission)
