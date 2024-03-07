@@ -62,12 +62,15 @@ class SceneParameters(Mapping):
             print(f'{k} -> {v}')
     
     def __get_hierarchy(self, key: str):
-        value, value_type, node, _ = self.properties[key]
+        value, value_type, node, flags = self.properties[key]
         return self.hierarchy[node]
+
+    def get_property_str(self, key: str):
+        return self.properties[key]
 
     def get_hierarchy_item_str(self, key: str):
         return self.__get_hierarchy(key)
-    
+
     def get_hierarchy_item_object(self, key: mi.Object):
         return self.hierarchy[key]
 
@@ -405,35 +408,41 @@ class _RenderOp(dr.CustomOp):
                 evaluate=False
             )
 
-    def forward(self):
+    def forward(self, model=None):
         mi.set_variant(self.variant)
         if not isinstance(self.params, mi.SceneParameters):
             raise Exception('An instance of mi.SceneParameter containing the '
                             'scene parameter to be differentiated should be '
                             'provided to mi.render() if forward derivatives are '
                             'desired!')
-        self.set_grad_out(
-            self.integrator.render_forward(self.scene, self.params, self.sensor,
-                                           self.seed[1], self.spp[1]))
+        guiding = model is not None
+        kwargs = {'model': model} if guiding else {}
+        grad = self.integrator.render_forward(self.scene, self.params, self.sensor,
+                                              self.seed[1], self.spp[1], **kwargs)
+        self.set_grad_out(grad)
 
-    def backward(self, opt=None, guiding_t=None, id=0):
+    def backward(self, opt=None, guiding_t=None, id=0, model=None):
         mi.set_variant(self.variant)
         if not isinstance(self.params, mi.SceneParameters):
             raise Exception('An instance of mi.SceneParameter containing the '
                             'scene parameter to be differentiated should be '
                             'provided to mi.render() if backward derivatives are '
                             'desired!')
-        
-        assert not((opt is None) ^ (guiding_t is None))
 
-        if hasattr(self.integrator, 'is_npm'):
-            self.integrator.render_backward(self.scene, self.params, self.grad_out(),
-                                            self.sensor, self.seed[1], self.spp[1],
-                                            opt, guiding_t, id)
-        else:
-            self.integrator.render_backward(self.scene, self.params, self.grad_out(),
-                                            self.sensor, self.seed[1], self.spp[1])
-            
+        assert (opt is None) == (guiding_t is None)
+        assert (opt is None) == (id == 0)
+
+        guiding = model is not None
+        kwargs = {'model': model} if guiding else {}
+        if opt is not None:
+            kwargs['opt'] = opt
+            kwargs['guiding_t'] = guiding_t
+            kwargs['id'] = id
+
+        self.integrator.render_backward(self.scene, self.params, self.grad_out(),
+                                        self.sensor, self.seed[1], self.spp[1],
+                                        **kwargs)
+
         # if opt != None:
         #     keys = opt.keys()
         #     for i, key in enumerate(keys):
