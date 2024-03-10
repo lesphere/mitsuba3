@@ -421,7 +421,7 @@ class _RenderOp(dr.CustomOp):
                                               self.seed[1], self.spp[1], **kwargs)
         self.set_grad_out(grad)
 
-    def backward(self, opt=None, guiding_t=None, id=0, model=None):
+    def backward(self, maintain_grad_array=False, opt=None, guiding_t=None, id=0, model=None):
         mi.set_variant(self.variant)
         if not isinstance(self.params, mi.SceneParameters):
             raise Exception('An instance of mi.SceneParameter containing the '
@@ -429,12 +429,14 @@ class _RenderOp(dr.CustomOp):
                             'provided to mi.render() if backward derivatives are '
                             'desired!')
 
+        assert (opt is None) == (maintain_grad_array == False)
         assert (opt is None) == (guiding_t is None)
         assert (opt is None) == (id == 0)
 
         guiding = model is not None
         kwargs = {'model': model} if guiding else {}
         if opt is not None:
+            kwargs['maintain_grad_array'] = maintain_grad_array
             kwargs['opt'] = opt
             kwargs['guiding_t'] = guiding_t
             kwargs['id'] = id
